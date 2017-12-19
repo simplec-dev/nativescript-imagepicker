@@ -198,7 +198,7 @@ export class Asset extends SelectedAsset {
                 this.album.imagePicker.selection.push(this);
             }
         } else {
-            delete this._selected;
+            this._selected = false;
             if (index >= 0) {
                 this.album.imagePicker.selection.splice(index, 1);
             }

@@ -11,12 +11,13 @@ interface ArrayBufferStatic extends ArrayBufferConstructor {
 
 export class SelectedAsset extends imageAssetModule.ImageAsset {
     private _uri: android.net.Uri;
-    private _thumbAsset: imageAssetModule.ImageAsset;
     private _fileUri: string;
     private _data: ArrayBuffer;
 
     constructor(uri: android.net.Uri) {
-        super(SelectedAsset._calculateFileUri(uri));
+        const fileUrl = SelectedAsset._calculateFileUri(uri);
+        super(fileUrl);
+        this._fileUri = fileUrl;
         this._uri = uri;
     }
 
@@ -49,12 +50,7 @@ export class SelectedAsset extends imageAssetModule.ImageAsset {
     }
 
     get thumbAsset(): imageAssetModule.ImageAsset {
-        return this._thumbAsset;
-    }
-
-    protected setThumbAsset(value: imageAssetModule.ImageAsset): void {
-        this._thumbAsset = value;
-        this.notifyPropertyChange("thumbAsset", value);
+        return null;
     }
 
     get uri(): string {
@@ -62,9 +58,6 @@ export class SelectedAsset extends imageAssetModule.ImageAsset {
     }
 
     get fileUri(): string {
-        if (!this._fileUri) {
-            this._fileUri = SelectedAsset._calculateFileUri(this._uri);
-        }
         return this._fileUri;
     }
 
@@ -77,7 +70,7 @@ export class SelectedAsset extends imageAssetModule.ImageAsset {
             let contentUri: android.net.Uri = null;
 
             // ExternalStorageProvider
-            if (SelectedAsset.isExternalStorageDocument(uri)) {
+            if ("com.android.externalstorage.documents" === uri.getAuthority()) {
                 docId = DocumentsContract.getDocumentId(uri);
                 id = docId.split(":")[1];
                 type = docId.split(":")[0];
@@ -89,15 +82,15 @@ export class SelectedAsset extends imageAssetModule.ImageAsset {
                 // TODO handle non-primary volumes
             }
             // DownloadsProvider
-            else if (SelectedAsset.isDownloadsDocument(uri)) {
+            else if ("com.android.providers.downloads.documents" === uri.getAuthority()) {
                 id = DocumentsContract.getDocumentId(uri);
                 contentUri = android.content.ContentUris.withAppendedId(
                     android.net.Uri.parse("content://downloads/public_downloads"), long(id));
 
-                return SelectedAsset.getDataColumn(contentUri, null, null);
+                return SelectedAsset._getDataColumn(contentUri, null, null);
             }
             // MediaProvider
-            else if (SelectedAsset.isMediaDocument(uri)) {
+            else if ("com.android.providers.media.documents" === uri.getAuthority()) {
                 docId = DocumentsContract.getDocumentId(uri);
                 let split = docId.split(":");
                 type = split[0];
@@ -114,13 +107,13 @@ export class SelectedAsset extends imageAssetModule.ImageAsset {
                 let selection = "_id=?";
                 let selectionArgs = [id];
 
-                return SelectedAsset.getDataColumn(contentUri, selection, selectionArgs);
+                return SelectedAsset._getDataColumn(contentUri, selection, selectionArgs);
             }
         }
         else {
             // MediaStore (and general)
             if ("content" === uri.getScheme()) {
-                return SelectedAsset.getDataColumn(uri, null, null);
+                return SelectedAsset._getDataColumn(uri, null, null);
             }
             // FILE
             else if ("file" === uri.getScheme()) {
@@ -131,12 +124,10 @@ export class SelectedAsset extends imageAssetModule.ImageAsset {
         return undefined;
     }
 
-    private static getDataColumn(uri: android.net.Uri, selection, selectionArgs) {
-
+    private static _getDataColumn(uri: android.net.Uri, selection, selectionArgs) {
         let cursor = null;
         let columns = [android.provider.MediaStore.MediaColumns.DATA];
         let filePath;
-
         try {
             cursor = this.getContentResolver().query(uri, columns, selection, selectionArgs, null);
             if (cursor != null && cursor.moveToFirst()) {
@@ -157,30 +148,6 @@ export class SelectedAsset extends imageAssetModule.ImageAsset {
         }
 
         return undefined;
-    }
-
-    private static isExternalStorageDocument(uri: android.net.Uri) {
-        return "com.android.externalstorage.documents" === uri.getAuthority();
-    }
-
-    private static isDownloadsDocument(uri: android.net.Uri) {
-        return "com.android.providers.downloads.documents" === uri.getAuthority();
-    }
-
-    private static isMediaDocument(uri: android.net.Uri) {
-        return "com.android.providers.media.documents" === uri.getAuthority();
-    }
-
-    private decodeThumbAssetUri(): void {
-        // Decode image size
-        let REQUIRED_SIZE = {
-            maxWidth: 100,
-            maxHeight: 100
-        };
-
-        // Decode with scale
-        this._thumbAsset = this.decodeUriForImageAsset(this._uri, REQUIRED_SIZE);
-        this.notifyPropertyChange("thumbAsset", this._thumbAsset);
     }
 
     /**
@@ -233,18 +200,6 @@ export class SelectedAsset extends imageAssetModule.ImageAsset {
         let image = new imagesource.ImageSource();
         image.setNativeSource(bitmap);
         return image;
-    }
-
-    /**
-     * Decodes the given URI using the given options.
-     * @param uri The URI that should be decoded into an ImageAsset.
-     * @param options The options that should be used to decode the image.
-     */
-    private decodeUriForImageAsset(uri: android.net.Uri, options?: { maxWidth: number, maxHeight: number }): imageAssetModule.ImageAsset {
-        let downsampleOptions = new android.graphics.BitmapFactory.Options();
-        downsampleOptions.inSampleSize = this.getSampleSize(uri, options);
-        let bitmap = android.graphics.BitmapFactory.decodeStream(this.openInputStream(uri), null, downsampleOptions);
-        return new imageAssetModule.ImageAsset(bitmap);
     }
 
     /**
