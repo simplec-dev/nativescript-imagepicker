@@ -154,14 +154,6 @@ export class SelectedAsset extends imageAssetModule.ImageAsset {
     get fileUri(): string {
         return null;
     }
-
-    getImage(options?: ImageOptions): Promise<image_source.ImageSource> {
-        return Promise.reject(new Error("getImage() is not implemented in SelectedAsset. Derived classes should implement it to be fully functional."));
-    }
-
-    getImageData(): Promise<ArrayBuffer> {
-        return Promise.reject(new Error("getImageData() is not implemented in SelectedAsset. Derived classes should implement it to be fully functional."));
-    }
 }
 
 export class Asset extends SelectedAsset {
@@ -210,13 +202,8 @@ export class Asset extends SelectedAsset {
     toggleSelection(args): void {
         this.selected = !this.selected;
     }
-
-    data(): Promise<any> {
-        return Promise.reject(new Error("Not implemented."));
-    }
 }
 
-// iOS8+ Photo framework based view model implementation...
 class ImagePickerPH extends ImagePicker {
 
     private _thumbRequestOptions: PHImageRequestOptions;
@@ -241,7 +228,6 @@ class ImagePickerPH extends ImagePicker {
 
     authorize(): Promise<void> {
         return new Promise<void>((resolve, reject) => {
-            let runloop = CFRunLoopGetCurrent();
             PHPhotoLibrary.requestAuthorization(function (result) {
                 if (result === PHAuthorizationStatus.Authorized) {
                     resolve();
@@ -277,6 +263,7 @@ class ImagePickerPH extends ImagePicker {
         }
     }
 
+    // TODO: just resize the current asset
     createPHImageThumbAsset(target, asset: PHAsset): void {
         PHImageManager.defaultManager().requestImageForAssetTargetSizeContentModeOptionsResultHandler(asset, this._thumbRequestSize, PHImageContentMode.AspectFill,
             this._thumbRequestOptions, function (target, uiImage, info) {
@@ -288,47 +275,6 @@ class ImagePickerPH extends ImagePicker {
                 };
                 target.setThumbAsset(imageAsset);
             }.bind(this, target));
-    }
-
-    /**
-     * Creates a new ImageSource from the given image, using the given sizing options.
-     * @param image   The image asset that should be put into an ImageSource.
-     * @param options The options that should be used to create the ImageSource.
-     */
-    createPHImage(image: PHAsset, options?: ImageOptions): Promise<image_source.ImageSource> {
-        return new Promise<image_source.ImageSource>((resolve, reject) => {
-            let size: CGSize = options ? CGSizeMake(options.maxWidth, options.maxHeight) : PHImageManagerMaximumSize;
-            let resizeMode = PHImageRequestOptions.alloc().init();
-            let aspectRatio = (options && options.aspectRatio && options.aspectRatio === 'fill') ? PHImageContentMode.AspectFill : PHImageContentMode.AspectFit;
-
-            // TODO: Decide whether it is benefical to use PHImageRequestOptionsResizeModeFast
-            //       Accuracy vs Performance. It is probably best to expose these as iOS specific options.
-            resizeMode.resizeMode = PHImageRequestOptionsResizeMode.Exact;
-            resizeMode.synchronous = false;
-
-            // TODO: provide the ability to change this setting.
-            //       Right now, it is needed to make sure that resolve is not called twice.
-            resizeMode.deliveryMode = PHImageRequestOptionsDeliveryMode.HighQualityFormat;
-            resizeMode.normalizedCropRect = CGRectMake(0, 0, 1, 1);
-            PHImageManager.defaultManager().requestImageForAssetTargetSizeContentModeOptionsResultHandler(
-                image,
-                size,
-                aspectRatio,
-                resizeMode,
-                (createdImage, data) => {
-                    if (createdImage) {
-                        let imageSource = new image_source.ImageSource();
-                        imageSource.setNativeSource(createdImage);
-
-                        // TODO: Determine whether runOnRunLoop is needed
-                        //       for callback or not. (See the data() implementation in AssetPH below)
-                        resolve(imageSource);
-                    } else {
-                        reject(new Error("The image could not be created."));
-                    }
-                }
-            );
-        });
     }
 
     done(): void {
@@ -356,12 +302,10 @@ class ImagePickerPH extends ImagePicker {
 
 class AlbumPH extends Album {
     private _setThumb: boolean;
-    private _options: ImageOptions;
 
-    constructor(imagePicker: ImagePicker, title: string, options?: ImageOptions) {
+    constructor(imagePicker: ImagePicker, title: string) {
         super(imagePicker, title);
         this._setThumb = false;
-        this._options = options;
     }
 
     addAssetsForFetchResult(result: PHFetchResult<any>): void {
@@ -377,7 +321,7 @@ class AlbumPH extends Album {
 
     addAsset(asset: PHAsset): void {
         let imagePicker = <ImagePickerPH>this.imagePicker;
-        let item = new AssetPH(this, asset, this._options);
+        let item = new AssetPH(this, asset);
 
         if (!this._setThumb && imagePicker) {
             this._setThumb = true;
@@ -396,10 +340,9 @@ class AssetPH extends Asset {
     private _phAsset: PHAsset;
     private static _uriRequestOptions: PHImageRequestOptions;
 
-    constructor(album: AlbumPH, phAsset: PHAsset, options?: ImageOptions) {
+    constructor(album: AlbumPH, phAsset: PHAsset) {
         super(album, phAsset);
         this._phAsset = phAsset;
-        this._initializeOptions(options);
     }
 
     /**
@@ -411,26 +354,6 @@ class AssetPH extends Asset {
 
     get uri(): string {
         return this._phAsset.localIdentifier.toString();
-    }
-
-    private _initializeOptions(options: ImageOptions): void {
-        if (options) {
-            this.options = {
-                width: options.maxWidth && options.maxWidth < IMAGE_WIDTH ? options.maxWidth : IMAGE_WIDTH,
-                height: options.maxHeight && options.maxHeight < IMAGE_HEIGHT ? options.maxHeight : IMAGE_HEIGHT,
-                keepAspectRatio: true
-            };
-        } else {
-            this.options = {
-                width: IMAGE_WIDTH,
-                height: IMAGE_HEIGHT,
-                keepAspectRatio: true
-            };
-        }
-    }
-
-    getImage(options?: ImageOptions): Promise<image_source.ImageSource> {
-        return (<ImagePickerPH>(<AlbumPH>this.album).imagePicker).createPHImage(this._phAsset, options);
     }
 
     getImageData(): Promise<ArrayBuffer> {
@@ -457,7 +380,6 @@ class AssetPH extends Asset {
 
     data(): Promise<any> {
         return new Promise((resolve, reject) => {
-            let runloop = CFRunLoopGetCurrent();
             PHImageManager.defaultManager().requestImageDataForAssetOptionsResultHandler(this._phAsset, null, (data, dataUTI, orientation, info) => {
                 if (data) {
                     resolve(data);

@@ -40,24 +40,6 @@ export class SelectedAsset extends ImageAsset {
      * The image data should be obtained using the other instance members.
      */
     fileUri: string;
-
-    /**
-     * Asynchronously retrieves an ImageSource object that represents this selected image.
-     * Scaled to the given size. (Aspect-ratio is preserved by default)
-     */
-    getImage(options?: ImageOptions): Promise<ImageSource>;
-
-    /**
-     * Asynchronously retrieves an ArrayBuffer that represents the raw byte data from this selected image.
-     */
-    getImageData(): Promise<ArrayBuffer>;
-
-    /**
-     * For iOS Returns a promise with NSData representation of the asset.
-     * On Android, Returns a promise with a java.io.InputStream.
-     * Note that in future versions it should return ArrayBuffer.
-     */
-    data(): Promise<any>;
 }
 
 export class ImagePicker {
