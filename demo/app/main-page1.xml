@@ -1,0 +1,8 @@
+<Page xmlns="http://www.nativescript.org/tns.xsd" loaded="onPageLoaded" >
+    <Page.actionBar>
+        <ActionBar title="Image Picker" />
+    </Page.actionBar>
+    <GridLayout rows="*, auto, auto">
+        <Button row="1" text="Navigate modally" tap="onTap" horizontalAlignment="center" />
+    </GridLayout>
+</Page>

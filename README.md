@@ -1,3 +1,18 @@
+1. [android] https://github.com/NativeScript/nativescript-imagepicker/issues/171 - not affected
+2. [android] [feature] https://github.com/NativeScript/nativescript-imagepicker/issues/170 - not affected, will be N/A in ios as well
+3. [ios] https://github.com/NativeScript/nativescript-imagepicker/issues/167 - will be fixed
+4. [android] https://github.com/NativeScript/nativescript-imagepicker/issues/161 - CHECK further
+5. [ios] https://github.com/NativeScript/nativescript-imagepicker/issues/155 - will be fixed
+6. [ios] https://github.com/NativeScript/nativescript-imagepicker/issues/144 - will be worked around using 'prompt' option in imagepicker
+7. [ios] https://github.com/NativeScript/nativescript-imagepicker/issues/143 - the changes mimic native photo album however, do add up slide to select
+8. [ios] https://github.com/NativeScript/nativescript-imagepicker/issues/54 - will be fixed using 'mediaType' option
+9. [both] https://github.com/NativeScript/nativescript-imagepicker/issues/52 - will be fixed in ios using 'maximumNumberOfSelection' option
+10. https://github.com/NativeScript/nativescript-imagepicker/issues/45 - fixed with latest tns-core-modules ???
+11. https://github.com/NativeScript/nativescript-imagepicker/issues/24 - could be fixed relatively easy in ios if we expose 'assetCollectionSubtypes' property
+12. https://github.com/NativeScript/nativescript-imagepicker/issues/79 - not affected
+
+
+
 # NativeScript Image Picker ![apple](https://cdn3.iconfinder.com/data/icons/picons-social/57/16-apple-32.png) ![android](https://cdn4.iconfinder.com/data/icons/logos-3/228/android-32.png) 
 
 

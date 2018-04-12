@@ -1,11 +1,11 @@
 import { Observable } from 'tns-core-modules/data/observable';
 import * as imagepicker from "nativescript-imagepicker";
-import { ItemEventData } from "tns-core-modules/ui/list-view";
-import { Label } from "tns-core-modules/ui/label";
+import { View } from 'tns-core-modules/ui/core/view/view';
 
 export class MainViewModel extends Observable {
     constructor() {
         super();
+        console.log("MainViewModel created");
     }
 
     private _imageSrc: any;
@@ -53,10 +53,7 @@ export class MainViewModel extends Observable {
         }
     }
 
-    public onItemLoading(args: ItemEventData) {
-        let label = args.view.getViewById<Label>("imageLabel");
-        label.text = "image " + args.index;
-    }
+    public imagePickerSourceView: View;
 
     public onSelectMultipleTap(args) {
         this.isSingleMode = false;
@@ -67,9 +64,14 @@ export class MainViewModel extends Observable {
     }
 
     public onSelectSingleTap(args) {
+        console.log("onSelectSingleTap called");
+
         this.isSingleMode = true;
-        let context = imagepicker.create({ mode: "single" });
+        let context = imagepicker.create({
+            mode: "single", prompt: "Select image please"
+        }, this.imagePickerSourceView);
         this.startSelection(context);
+
     }
 
     private startSelection(context) {

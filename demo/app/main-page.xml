@@ -1,16 +1,18 @@
-<Page xmlns="http://www.nativescript.org/tns.xsd" navigatingTo="onNavigatingTo">
+<Page xmlns="http://www.nativescript.org/tns.xsd" navigatingTo="onNavigatingTo" shownModally="onShownModally" >
     <Page.actionBar>
         <ActionBar title="Image Picker" />
     </Page.actionBar>
     <GridLayout rows="*, auto, auto">
-        <ListView itemLoading="{{ onItemLoading }}" items="{{ imageAssets }}">
+        <ListView items="{{ imageAssets }}">
             <ListView.itemTemplate>
-                <GridLayout columns="auto, *">
+                <GridLayout columns="auto, auto, *">
                     <Image width="{{ $parents['ListView'].thumbSize }}" height="{{ $parents['ListView'].thumbSize }}" src="{{ $value }}" stretch="fill" />
-                    <Label class="m-10" id="imageLabel" col="1" />
+                    <Label col="1" class="m-10" text="{{  }}" />
+                    <Label col="2" text="some text1" />
                 </GridLayout>
             </ListView.itemTemplate>
         </ListView>
+
         <Image src="{{ imageSrc }}" visibility="{{ isSingleMode ? 'visible' : 'collapsed' }}" width="{{ previewSize }}" height="{{ previewSize }}" stretch="aspectFit" />
         <Button row="1" text="Pick Single" tap="{{ onSelectSingleTap }}" horizontalAlignment="center" />
         <Button row="2" text="Pick Multiple" tap="{{ onSelectMultipleTap }}" horizontalAlignment="center" />

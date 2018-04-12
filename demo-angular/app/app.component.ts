@@ -25,7 +25,8 @@ export class AppComponent {
         this.isSingleMode = true;
 
         let context = imagepicker.create({
-            mode: "single"
+            mode: "single",
+            prompt: "Select image please"
         });
         this.startSelection(context);
     }
