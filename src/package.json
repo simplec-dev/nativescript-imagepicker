@@ -1,10 +1,10 @@
 {
-    "name": "nativescript-imagepicker",
-    "version": "6.0.2",
+    "name": "nativescript-ssi-imagepicker",
+    "version": "6.0.7",
     "description": "A plugin for the NativeScript framework implementing multiple image picker",
     "repository": {
         "type": "git",
-        "url": "https://github.com/NativeScript/nativescript-imagepicker"
+        "url": "https://github.com/simplec-dev/nativescript-imagepicker"
     },
     "main": "imagepicker",
     "typings": "index.d.ts",
@@ -24,7 +24,7 @@
         "test.android": "npm i && npm run tsc && npm run tslint && cd ../demo && tns build android && tns test android --justlaunch && cd ../demo-angular && tns build android && tns test android --justlaunch",
         "test.ios": "npm i && npm run tsc && npm run tslint && cd ../demo && tns build ios && tns test ios --justlaunch",
         "tslint": "cd .. && tslint \"**/*.ts\" --config tslint.json --exclude \"**/node_modules/**\"",
-        "plugin.link": "npm link && cd ../demo && npm link nativescript-imagepicker && cd ../demo-angular && npm link nativescript-imagepicker",
+        "plugin.link": "npm link && cd ../demo && npm link nativescript-ssi-imagepicker && cd ../demo-angular && npm link nativescript-ssi-imagepicker",
         "plugin.tscwatch": "npm run tsc -- -w",
         "demo.ios": "npm i && npm run tsc && cd ../demo && tns run ios --syncAllFiles",
         "demo.android": "npm i && npm run tsc && cd ../demo && tns run android --syncAllFiles",
@@ -40,10 +40,10 @@
     ],
     "author": "NativeScript Team",
     "bugs": {
-        "url": "https://github.com/NativeScript/nativescript-imagepicker/issues"
+        "url": "https://github.com/simplec-dev/nativescript-imagepicker/issues"
     },
     "license": "Apache-2.0",
-    "homepage": "https://github.com/NativeScript/nativescript-imagepicker",
+    "homepage": "https://github.com/simplec-dev/nativescript-imagepicker",
     "readmeFilename": "README.md",
     "devDependencies": {
         "tns-core-modules": "^3.1.0",

@@ -189,7 +189,12 @@ export class ImagePicker {
 
             let Intent = android.content.Intent;
             let intent = new Intent();
-            intent.setType("image/*");
+            if (this._options.mediaType == 1) {
+                intent.setType("image/*");
+            }
+            if (this._options.mediaType == 2) {
+                intent.setType("video/*");
+            }
 
             // TODO: Use (<any>android).content.Intent.EXTRA_ALLOW_MULTIPLE
             if (this.mode === 'multiple') {
