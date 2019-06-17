@@ -9,7 +9,7 @@ PUBLISH=--publish
 install(){
     npm i
 }
-
+ 
 pack() {
 
     echo 'Clearing /src and /package...'
