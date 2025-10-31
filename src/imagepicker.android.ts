@@ -1,9 +1,13 @@
 import * as application from "tns-core-modules/application";
 import * as imageAssetModule from "tns-core-modules/image-asset";
 import * as permissions from "nativescript-permissions";
+import {File} from "tns-core-modules/file-system";
+import * as utils from "tns-core-modules/utils/utils";
 
 import { ImagePickerMediaType, Options } from "./imagepicker.common";
 export * from "./imagepicker.common";
+
+declare const global: any;
 
 class UriHelper {
     public static _calculateFileUri(uri: android.net.Uri) {
@@ -182,92 +186,248 @@ export class ImagePicker {
         return mimeTypes;
     }
 
+	get maximumNumberOfSelection() {
+		if (this._options.maximumNumberOfSelection && this._options.maximumNumberOfSelection > 0) {
+			return this._options.maximumNumberOfSelection;
+		}
+
+		return 0;
+	}
+	private get usePhotoPicker(): boolean {
+        return this._options &&
+            this._options.android &&
+            this._options.android.use_photo_picker &&
+            android &&
+            android.os &&
+            android.os.Build &&
+            android.os.Build.VERSION &&
+            android.os.Build.VERSION.SDK_INT >= 33;
+		//return this._options?.android?.use_photo_picker && (<any>android).os.Build.VERSION.SDK_INT >= 33;
+	}
     authorize(): Promise<void> {
-        if ((<any>android).os.Build.VERSION.SDK_INT >= 23) {
-            return permissions.requestPermission([(<any>android).Manifest.permission.READ_EXTERNAL_STORAGE]);
+		if (this.usePhotoPicker) {
+            return new Promise((resolve, reject) => {
+                resolve();
+            });
         } else {
-            return Promise.resolve();
+            let perms: String[] = [];
+			let explanations: String[] = [];
+            
+			if (android.os.Build.VERSION.SDK_INT >= 33 && utils.ad.getApplicationContext().getApplicationInfo().targetSdkVersion >= 33) {
+				if (this.mediaType === 'image/*') {
+                    perms.push('android.permission.READ_MEDIA_IMAGES');
+                    explanations.push("To pick images from your gallery");
+				} else if (this.mediaType === 'video/*') {
+                    perms.push('android.permission.READ_MEDIA_VIDEO');
+                    explanations.push("To pick videos from your gallery");
+				} else {
+                    perms.push('android.permission.READ_MEDIA_IMAGES');
+                    explanations.push("To pick images from your gallery");
+                    perms.push('android.permission.READ_MEDIA_VIDEO');
+                    explanations.push("To pick videos from your gallery");
+				}
+
+				var permsPromise = permissions.requestPermissions(perms, explanations)
+                return new Promise((resolve, reject) => {
+                    permsPromise.then((result) => {
+                        console.log("requestPermissions result");
+                        console.log(result);
+                        resolve();
+                    }).catch((error) => {
+                        console.log("requestPermissions error");
+                        console.log(error);
+                        reject(error);
+                    });
+                });
+			} else if (android.os.Build.VERSION.SDK_INT >= 23) {
+                perms.push('android.permission.READ_EXTERNAL_STORAGE');
+                explanations.push("To pick media from your gallery");
+                
+				var permsPromise = permissions.requestPermissions(perms, explanations)
+                return new Promise((resolve, reject) => {
+                    permsPromise.then((result) => {
+                        console.log("requestPermissions result");
+                        console.log(result);
+                        resolve();
+                    }).catch((error) => {
+                        console.log("requestPermissions error");
+                        console.log(error);
+                        reject(error);
+                    });
+                });
+			} else {
+                return new Promise((resolve, reject) => {
+                    resolve();
+                });
+			}
         }
+
+        
     }
 
     present(): Promise<imageAssetModule.ImageAsset[]> {
         return new Promise((resolve, reject) => {
+			if (this.usePhotoPicker) {
+				const REQUEST_LAUNCH_LIBRARY = 13003;
 
-            // WARNING: If we want to support multiple pickers we will need to have a range of IDs here:
-            let RESULT_CODE_PICKER_IMAGES = 9192;
+                let Application = require("tns-core-modules/application");
+				var onResult = function(args: any) {
+					let requestCode = args.requestCode;
+					if (requestCode === REQUEST_LAUNCH_LIBRARY) {
+						let resultCode = args.resultCode;
+						if (resultCode == android.app.Activity.RESULT_OK) {
+							try {
+								let data = args.intent;
+								let uris = new Array<string>();
+								let clip = data.getClipData();
+								if (clip) {
+									let count = clip.getItemCount();
+									for (let i = 0; i < count; i++) {
+										let clipItem = clip.getItemAt(i);
+										if (clipItem) {
+											let uri = clipItem.getUri();
+											if (uri) {
+												uris.push(uri.toString());
+											}
+										}
+									}
+								} else {
+									const uriData = data.getData();
+									const uri = uriData.toString();
+									uris = [uri];
+								}
 
-            let application = require("tns-core-modules/application");
-            application.android.on(application.AndroidApplication.activityResultEvent, onResult);
+								const handle = (selectedAsset, i?) => {
+									const file = File.fromPath(selectedAsset.android);
+									let copiedFile: any = false;
 
-            function onResult(args) {
+                                    return file.path;
+								};
 
-                let requestCode = args.requestCode;
-                let resultCode = args.resultCode;
-                let data = args.intent;
+								let results = [];
+								for (let i = 0; i <= uris.length - 1; ++i) {
+									const selectedAsset = new imageAssetModule.ImageAsset(uris[i].toString());
+									results.push(selectedAsset);
+                                    console.log(selectedAsset);
+								}
+								Application.android.off(application.AndroidApplication.activityResultEvent, onResult);
+								resolve(results);
+							} catch (e) {
+								Application.android.off(application.AndroidApplication.activityResultEvent, onResult);
+								reject(e);
+							}
+						} else {
+							Application.android.off(application.AndroidApplication.activityResultEvent, onResult);
+							reject(new Error('Image picker activity result code ' + resultCode));
+							return;
+						}
+					}
+				}
 
-                if (requestCode === RESULT_CODE_PICKER_IMAGES) {
-                    if (resultCode === android.app.Activity.RESULT_OK) {
+				Application.android.on(Application.AndroidApplication.activityResultEvent, onResult);
+                
+                const intent = new android.content.Intent();
+                const mimeType = this.mediaType || "image/*";
 
-                        try {
-                            let results = [];
+                if (this.mode === "multiple" && this.maximumNumberOfSelection !== 1) {
+                    // Allow multiple selection
+                    intent.setType(mimeType);
+                    intent.putExtra("android.intent.extra.ALLOW_MULTIPLE", true);
+                    intent.setAction(android.content.Intent.ACTION_GET_CONTENT);
+                } else {
+                    // Single selection
+                    intent.setType(mimeType);
+                    intent.setAction(android.content.Intent.ACTION_GET_CONTENT);
+                }
 
-                            let clip = data.getClipData();
-                            if (clip) {
-                                let count = clip.getItemCount();
-                                for (let i = 0; i < count; i++) {
-                                    let clipItem = clip.getItemAt(i);
-                                    if (clipItem) {
-                                        let uri = clipItem.getUri();
-                                        if (uri) {
-                                            let selectedAsset = new imageAssetModule.ImageAsset(UriHelper._calculateFileUri(uri));
-                                            results.push(selectedAsset);
+                // CATEGORY_OPENABLE ensures only file-like sources appear
+                intent.addCategory(android.content.Intent.CATEGORY_OPENABLE);
+
+                // Start picker
+                const activity = application.android.foregroundActivity || application.android.startActivity;
+                activity.startActivityForResult(
+                    android.content.Intent.createChooser(intent, "Select Media"),
+                    REQUEST_LAUNCH_LIBRARY
+                );
+			} else {
+
+                // WARNING: If we want to support multiple pickers we will need to have a range of IDs here:
+                let RESULT_CODE_PICKER_IMAGES = 9192;
+
+                let application = require("tns-core-modules/application");
+
+                var onResult = function(args: any) {
+
+                    let requestCode = args.requestCode;
+                    let resultCode = args.resultCode;
+                    let data = args.intent;
+
+                    if (requestCode === RESULT_CODE_PICKER_IMAGES) {
+                        if (resultCode === android.app.Activity.RESULT_OK) {
+
+                            try {
+                                let results = [];
+
+                                let clip = data.getClipData();
+                                if (clip) {
+                                    let count = clip.getItemCount();
+                                    for (let i = 0; i < count; i++) {
+                                        let clipItem = clip.getItemAt(i);
+                                        if (clipItem) {
+                                            let uri = clipItem.getUri();
+                                            if (uri) {
+                                                let selectedAsset = new imageAssetModule.ImageAsset(UriHelper._calculateFileUri(uri));
+                                                results.push(selectedAsset);
+                                            }
                                         }
                                     }
+                                } else {
+                                    let uri = data.getData();
+                                    let selectedAsset = new imageAssetModule.ImageAsset(UriHelper._calculateFileUri(uri));
+                                    results.push(selectedAsset);
                                 }
-                            } else {
-                                let uri = data.getData();
-                                let selectedAsset = new imageAssetModule.ImageAsset(UriHelper._calculateFileUri(uri));
-                                results.push(selectedAsset);
+
+                                application.android.off(application.AndroidApplication.activityResultEvent, onResult);
+                                resolve(results);
+                                return;
+
+                            } catch (e) {
+                                application.android.off(application.AndroidApplication.activityResultEvent, onResult);
+                                reject(e);
+                                return;
+
                             }
-
+                        } else {
                             application.android.off(application.AndroidApplication.activityResultEvent, onResult);
-                            resolve(results);
+                            reject(new Error("Image picker activity result code " + resultCode));
                             return;
-
-                        } catch (e) {
-                            application.android.off(application.AndroidApplication.activityResultEvent, onResult);
-                            reject(e);
-                            return;
-
                         }
-                    } else {
-                        application.android.off(application.AndroidApplication.activityResultEvent, onResult);
-                        reject(new Error("Image picker activity result code " + resultCode));
-                        return;
                     }
                 }
+
+                application.android.on(application.AndroidApplication.activityResultEvent, onResult);
+
+                let Intent = android.content.Intent;
+                let intent = new Intent();
+                intent.setType(this.mediaType);
+
+                // not in platform-declaration typings
+                intent.putExtra((android.content.Intent as any).EXTRA_MIME_TYPES, this.mimeTypes);
+
+                // TODO: Use (<any>android).content.Intent.EXTRA_ALLOW_MULTIPLE
+                if (this.mode === 'multiple') {
+                    intent.putExtra("android.intent.extra.ALLOW_MULTIPLE", true);
+                }
+
+                if (this._options.showAdvanced) {
+                    intent.putExtra("android.content.extra.SHOW_ADVANCED", true);
+                }
+
+                intent.putExtra(android.content.Intent.EXTRA_LOCAL_ONLY, true);
+                intent.setAction("android.intent.action.OPEN_DOCUMENT");
+                let chooser = Intent.createChooser(intent, "Select Picture");
+                application.android.foregroundActivity.startActivityForResult(intent, RESULT_CODE_PICKER_IMAGES);
             }
-
-            let Intent = android.content.Intent;
-            let intent = new Intent();
-            intent.setType(this.mediaType);
-
-            // not in platform-declaration typings
-            intent.putExtra((android.content.Intent as any).EXTRA_MIME_TYPES, this.mimeTypes);
-
-            // TODO: Use (<any>android).content.Intent.EXTRA_ALLOW_MULTIPLE
-            if (this.mode === 'multiple') {
-                intent.putExtra("android.intent.extra.ALLOW_MULTIPLE", true);
-            }
-
-            if (this._options.showAdvanced) {
-                intent.putExtra("android.content.extra.SHOW_ADVANCED", true);
-            }
-
-            intent.putExtra(android.content.Intent.EXTRA_LOCAL_ONLY, true);
-            intent.setAction("android.intent.action.OPEN_DOCUMENT");
-            let chooser = Intent.createChooser(intent, "Select Picture");
-            application.android.foregroundActivity.startActivityForResult(intent, RESULT_CODE_PICKER_IMAGES);
         });
     }
 }
