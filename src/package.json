@@ -1,6 +1,6 @@
 {
-    "name": "nativescript-imagepicker",
-    "version": "7.1.0",
+    "name": "@simplec-dev/nativescript-ssi-imagepicker",
+    "version": "7.2.9",
     "description": "A plugin for the NativeScript framework implementing multiple image picker",
     "repository": {
         "type": "git",
@@ -48,7 +48,7 @@
     "devDependencies": {
         "tns-core-modules": "^6.0.0",
         "tns-platform-declarations": "^6.0.0",
-        "typescript": "~3.5.3",
+        "typescript": "~5.6.0",
         "tslint": "~5.11.0"
     },
     "dependencies": {
